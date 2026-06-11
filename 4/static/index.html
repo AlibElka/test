@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TicketBook</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f7f6f2;
+    color: #1a1a18;
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    background: #fff;
+    border-bottom: 1px solid #e8e6e0;
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -.5px; color: #1a1a18; }
+  .logo span { color: #2563eb; }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .nav-user { font-size: 14px; color: #5f5e5a; }
+  .btn { padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-outline { background: #fff; color: #1a1a18; border: 1px solid #d1d0ca; }
+  .btn-outline:hover { background: #f7f6f2; }
+  .btn-sm { padding: 6px 14px; font-size: 13px; }
+  .btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .btn-danger:hover { background: #fee2e2; }
+
+  /* PAGES */
+  .page { display: none; max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+  .page.active { display: block; }
+
+  /* AUTH */
+  .auth-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e8e6e0;
+    padding: 40px;
+    max-width: 400px;
+    margin: 60px auto;
+  }
+  .auth-card h2 { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+  .auth-card p { font-size: 14px; color: #5f5e5a; margin-bottom: 28px; }
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #5f5e5a; }
+  input[type=text], input[type=email], input[type=password] {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid #d1d0ca; font-size: 14px; outline: none;
+    background: #fff; color: #1a1a18;
+    transition: border-color .15s;
+  }
+  input:focus { border-color: #2563eb; }
+  .auth-footer { margin-top: 16px; text-align: center; font-size: 13px; color: #5f5e5a; }
+  .auth-footer a { color: #2563eb; cursor: pointer; }
+  .error-msg { background: #fef2f2; color: #dc2626; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none; }
+
+  /* CATALOG */
+  .page-header { margin-bottom: 28px; }
+  .page-header h1 { font-size: 26px; font-weight: 600; margin-bottom: 4px; }
+  .page-header p { font-size: 14px; color: #5f5e5a; }
+  .filters { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .filter-btn { padding: 7px 16px; border-radius: 20px; font-size: 13px; border: 1px solid #d1d0ca; background: #fff; cursor: pointer; transition: all .15s; }
+  .filter-btn:hover, .filter-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .event-card {
+    background: #fff; border-radius: 12px; border: 1px solid #e8e6e0;
+    padding: 20px; cursor: pointer; transition: all .15s;
+  }
+  .event-card:hover { border-color: #2563eb; transform: translateY(-2px); box-shadow: 0 4px 20px rgba(37,99,235,.1); }
+  .event-cat { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+  .cat-concert { color: #7c3aed; }
+  .cat-theatre { color: #059669; }
+  .cat-cinema  { color: #d97706; }
+  .event-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; line-height: 1.3; }
+  .event-date { font-size: 13px; color: #5f5e5a; margin-bottom: 12px; }
+  .event-footer { display: flex; align-items: center; justify-content: space-between; }
+  .event-price { font-size: 18px; font-weight: 700; color: #2563eb; }
+  .event-seats { font-size: 12px; color: #9c9a92; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 16px; padding: 32px;
+    width: 100%; max-width: 440px; margin: 16px;
+  }
+  .modal h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .modal-meta { font-size: 14px; color: #5f5e5a; margin-bottom: 24px; }
+  .modal-row { display: flex; justify-content: space-between; font-size: 14px; padding: 10px 0; border-bottom: 1px solid #f0efe9; }
+  .modal-row:last-of-type { border-bottom: none; }
+  .modal-row .label { color: #5f5e5a; }
+  .modal-row .value { font-weight: 500; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+  .modal-actions .btn { flex: 1; text-align: center; }
+
+  /* MY BOOKINGS */
+  .booking-list { display: flex; flex-direction: column; gap: 12px; }
+  .booking-card { background: #fff; border-radius: 12px; border: 1px solid #e8e6e0; padding: 18px 20px; display: flex; align-items: center; gap: 16px; }
+  .booking-status { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; flex-shrink: 0; }
+  .status-pending  { background: #fefce8; color: #854d0e; }
+  .status-paid     { background: #f0fdf4; color: #166534; }
+  .status-failed   { background: #fef2f2; color: #991b1b; }
+  .status-cancelled{ background: #f9fafb; color: #6b7280; }
+  .booking-info { flex: 1; }
+  .booking-title { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+  .booking-sub { font-size: 13px; color: #5f5e5a; }
+  .booking-price { font-size: 16px; font-weight: 700; color: #2563eb; margin-left: auto; }
+
+  /* PAYMENT */
+  .pay-card { background: #fff; border-radius: 16px; border: 1px solid #e8e6e0; padding: 32px; max-width: 460px; }
+  .pay-card h2 { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+  .card-input { background: #f7f6f2; border-radius: 10px; padding: 16px; margin-bottom: 16px; font-family: monospace; font-size: 15px; letter-spacing: .1em; color: #1a1a18; }
+  .test-cards { margin-top: 12px; font-size: 12px; color: #9c9a92; }
+  .test-cards span { cursor: pointer; color: #2563eb; margin-right: 8px; }
+  .success-banner { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px; color: #166534; font-size: 14px; margin-top: 16px; display: none; }
+  .empty-state { text-align: center; padding: 60px 24px; color: #9c9a92; }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Ticket<span>Book</span></div>
+  <div class="nav-right">
+    <span class="nav-user" id="nav-username"></span>
+    <button class="btn btn-outline btn-sm" id="btn-mybookings" style="display:none" onclick="showPage('bookings')">Мои брони</button>
+    <button class="btn btn-primary btn-sm" id="btn-login" onclick="showPage('login')">Войти</button>
+    <button class="btn btn-outline btn-sm" id="btn-logout" style="display:none" onclick="logout()">Выйти</button>
+  </div>
+</nav>
+
+<!-- LOGIN -->
+<div id="page-login" class="page active">
+  <div class="auth-card">
+    <h2>Добро пожаловать</h2>
+    <p>Войдите, чтобы бронировать билеты</p>
+    <div class="error-msg" id="login-error"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="user@test.com"></div>
+    <div class="form-group"><label>Пароль</label><input type="password" id="login-pass" placeholder="••••••••"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Войти</button>
+    <div class="auth-footer">Нет аккаунта? <a onclick="showPage('register')">Зарегистрироваться</a></div>
+  </div>
+</div>
+
+<!-- REGISTER -->
+<div id="page-register" class="page">
+  <div class="auth-card">
+    <h2>Регистрация</h2>
+    <p>Создайте аккаунт для бронирования</p>
+    <div class="error-msg" id="reg-error"></div>
+    <div class="form-group"><label>Имя</label><input type="text" id="reg-name" placeholder="Иван Иванов"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="reg-email" placeholder="you@email.com"></div>
+    <div class="form-group"><label>Пароль</label><input type="password" id="reg-pass" placeholder="••••••••"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="doRegister()">Зарегистрироваться</button>
+    <div class="auth-footer">Уже есть аккаунт? <a onclick="showPage('login')">Войти</a></div>
+  </div>
+</div>
+
+<!-- CATALOG -->
+<div id="page-catalog" class="page">
+  <div class="page-header">
+    <h1>Мероприятия</h1>
+    <p>Выберите событие и забронируйте билет</p>
+  </div>
+  <div class="filters">
+    <button class="filter-btn active" onclick="filterEvents(this, '')">Все</button>
+    <button class="filter-btn" onclick="filterEvents(this, 'concert')">Концерты</button>
+    <button class="filter-btn" onclick="filterEvents(this, 'theatre')">Театр</button>
+    <button class="filter-btn" onclick="filterEvents(this, 'cinema')">Кино</button>
+  </div>
+  <div class="events-grid" id="events-grid"></div>
+</div>
+
+<!-- MY BOOKINGS -->
+<div id="page-bookings" class="page">
+  <div class="page-header">
+    <h1>Мои бронирования</h1>
+    <p>История ваших билетов</p>
+  </div>
+  <div class="booking-list" id="booking-list"></div>
+</div>
+
+<!-- PAYMENT -->
+<div id="page-payment" class="page">
+  <div class="page-header">
+    <h1>Оплата</h1>
+    <p>Введите данные карты для подтверждения бронирования</p>
+  </div>
+  <div class="pay-card">
+    <h2 id="pay-title">Оплата билета</h2>
+    <div class="modal-row"><span class="label">Мероприятие</span><span class="value" id="pay-event">—</span></div>
+    <div class="modal-row"><span class="label">Дата</span><span class="value" id="pay-date">—</span></div>
+    <div class="modal-row" style="margin-bottom:20px"><span class="label">Сумма</span><span class="value" id="pay-price" style="color:#2563eb;font-size:18px">—</span></div>
+    <div class="card-input" id="card-display">•••• •••• •••• 4242</div>
+    <div class="form-group"><label>Номер карты</label>
+      <input type="text" id="card-number" placeholder="0000 0000 0000 0000" maxlength="19"
+        oninput="formatCard(this)">
+    </div>
+    <div style="display:flex;gap:12px">
+      <div class="form-group" style="flex:1"><label>Срок</label><input type="text" placeholder="MM/YY" maxlength="5"></div>
+      <div class="form-group" style="flex:1"><label>CVV</label><input type="password" placeholder="•••" maxlength="3"></div>
+    </div>
+    <div class="test-cards">
+      Тестовые карты:
+      <span onclick="setCard('tok_test_valid')">✅ Успешная</span>
+      <span onclick="setCard('tok_test_decline')">❌ Отклонённая</span>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="doPay()">Оплатить</button>
+    <div class="success-banner" id="pay-success">✅ Оплата прошла успешно! Билет подтверждён.</div>
+  </div>
+</div>
+
+<!-- EVENT MODAL -->
+<div class="modal-overlay" id="event-modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="event-cat" id="modal-cat"></div>
+    <h2 id="modal-title"></h2>
+    <div class="modal-meta" id="modal-meta"></div>
+    <div class="modal-row"><span class="label">Дата</span><span class="value" id="modal-date"></span></div>
+    <div class="modal-row"><span class="label">Цена</span><span class="value" id="modal-price"></span></div>
+    <div class="modal-row"><span class="label">Мест</span><span class="value" id="modal-seats"></span></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Закрыть</button>
+      <button class="btn btn-primary" id="modal-book-btn" onclick="bookFromModal()">Забронировать</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let token = localStorage.getItem('tb_token') || null;
+let userName = localStorage.getItem('tb_name') || '';
+let currentEventId = null;
+let pendingBookingId = null;
+let cardToken = 'tok_test_valid';
+
+function api(path, method='GET', body=null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(API + path, opts).then(r => r.json().then(d => ({ ok: r.ok, status: r.status, data: d })));
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (name === 'catalog') loadEvents();
+  if (name === 'bookings') loadBookings();
+}
+
+function updateNav() {
+  const loggedIn = !!token;
+  document.getElementById('btn-login').style.display = loggedIn ? 'none' : '';
+  document.getElementById('btn-logout').style.display = loggedIn ? '' : 'none';
+  document.getElementById('btn-mybookings').style.display = loggedIn ? '' : 'none';
+  document.getElementById('nav-username').textContent = loggedIn ? userName : '';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value;
+  const pass = document.getElementById('login-pass').value;
+  const r = await api('/api/auth/login', 'POST', { email, password: pass });
+  if (!r.ok) { showError('login-error', r.data.error); return; }
+  token = r.data.session_token;
+  userName = r.data.name || email;
+  localStorage.setItem('tb_token', token);
+  localStorage.setItem('tb_name', userName);
+  updateNav();
+  showPage('catalog');
+}
+
+async function doRegister() {
+  const name = document.getElementById('reg-name').value;
+  const email = document.getElementById('reg-email').value;
+  const pass = document.getElementById('reg-pass').value;
+  const r = await api('/api/auth/register', 'POST', { name, email, password: pass });
+  if (!r.ok) { showError('reg-error', r.data.error); return; }
+  showPage('login');
+}
+
+async function logout() {
+  if (token) await api('/api/auth/logout', 'POST');
+  token = null; userName = '';
+  localStorage.removeItem('tb_token');
+  localStorage.removeItem('tb_name');
+  updateNav();
+  showPage('login');
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+let allEvents = [];
+async function loadEvents(category = '') {
+  const url = '/api/events' + (category ? '?category=' + category : '');
+  const r = await api(url);
+  allEvents = r.data;
+  renderEvents(allEvents);
+}
+
+function renderEvents(events) {
+  const grid = document.getElementById('events-grid');
+  if (!events.length) { grid.innerHTML = '<div class="empty-state"><div class="icon">🎭</div><p>Нет мероприятий</p></div>'; return; }
+  const catNames = { concert: 'Концерт', theatre: 'Театр', cinema: 'Кино' };
+  const catClass = { concert: 'cat-concert', theatre: 'cat-theatre', cinema: 'cat-cinema' };
+  grid.innerHTML = events.map(e => `
+    <div class="event-card" onclick="openModal(${e.id})">
+      <div class="event-cat ${catClass[e.category]}">${catNames[e.category] || e.category}</div>
+      <div class="event-title">${e.title}</div>
+      <div class="event-date">📅 ${formatDate(e.date)}</div>
+      <div class="event-footer">
+        <div class="event-price">${e.price.toLocaleString()} ₽</div>
+        <div class="event-seats">${e.seats} мест</div>
+      </div>
+    </div>`).join('');
+}
+
+function filterEvents(btn, cat) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadEvents(cat);
+}
+
+function openModal(id) {
+  if (!token) { showPage('login'); return; }
+  const e = allEvents.find(x => x.id === id);
+  if (!e) return;
+  currentEventId = id;
+  const catNames = { concert: 'Концерт', theatre: 'Театр', cinema: 'Кино' };
+  const catClass = { concert: 'cat-concert', theatre: 'cat-theatre', cinema: 'cat-cinema' };
+  document.getElementById('modal-cat').className = 'event-cat ' + (catClass[e.category] || '');
+  document.getElementById('modal-cat').textContent = catNames[e.category] || e.category;
+  document.getElementById('modal-title').textContent = e.title;
+  document.getElementById('modal-date').textContent = formatDate(e.date);
+  document.getElementById('modal-price').textContent = e.price.toLocaleString() + ' ₽';
+  document.getElementById('modal-seats').textContent = e.seats;
+  document.getElementById('event-modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target.id === 'event-modal') {
+    document.getElementById('event-modal').classList.remove('open');
+  }
+}
+
+async function bookFromModal() {
+  const r = await api('/api/booking/create', 'POST', { event_id: currentEventId });
+  if (!r.ok) { alert(r.data.error); return; }
+  pendingBookingId = r.data.booking_id;
+  const e = allEvents.find(x => x.id === currentEventId);
+  document.getElementById('pay-event').textContent = e.title;
+  document.getElementById('pay-date').textContent = formatDate(e.date);
+  document.getElementById('pay-price').textContent = e.price.toLocaleString() + ' ₽';
+  document.getElementById('pay-success').style.display = 'none';
+  document.getElementById('event-modal').classList.remove('open');
+  showPage('payment');
+}
+
+async function doPay() {
+  const r = await api('/api/payment/pay', 'POST', { booking_id: pendingBookingId, card_token: cardToken });
+  if (r.data.payment_status === 'success') {
+    document.getElementById('pay-success').style.display = 'block';
+    setTimeout(() => showPage('bookings'), 2000);
+  } else {
+    alert('Оплата отклонена: ' + (r.data.error || r.data.payment_status));
+  }
+}
+
+async function loadBookings() {
+  const r = await api('/api/booking/my');
+  const list = document.getElementById('booking-list');
+  if (!r.data.length) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">🎟</div><p>У вас пока нет бронирований</p></div>';
+    return;
+  }
+  list.innerHTML = r.data.map(b => `
+    <div class="booking-card">
+      <span class="booking-status status-${b.status}">${statusLabel(b.status)}</span>
+      <div class="booking-info">
+        <div class="booking-title">${b.event_title}</div>
+        <div class="booking-sub">${formatDate(b.event_date)} · №${b.booking_id}</div>
+      </div>
+      <div class="booking-price">${b.price.toLocaleString()} ₽</div>
+      ${b.status === 'pending' ? `<button class="btn btn-sm btn-danger" onclick="cancelBooking(${b.booking_id})">Отменить</button>` : ''}
+    </div>`).join('');
+}
+
+async function cancelBooking(id) {
+  await api('/api/booking/' + id + '/cancel', 'POST');
+  loadBookings();
+}
+
+function setCard(tok) {
+  cardToken = tok;
+  document.getElementById('card-display').textContent =
+    tok === 'tok_test_valid' ? '•••• •••• •••• 4242' : '•••• •••• •••• 0000';
+}
+
+function formatCard(input) {
+  let v = input.value.replace(/\D/g, '').substring(0, 16);
+  input.value = v.replace(/(.{4})/g, '$1 ').trim();
+}
+
+function formatDate(d) {
+  return new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function statusLabel(s) {
+  return { pending: 'Ожидает', paid: 'Оплачено', failed: 'Ошибка', cancelled: 'Отменено' }[s] || s;
+}
+
+// Init
+updateNav();
+if (token) showPage('catalog');
+</script>
+</body>
+</html>

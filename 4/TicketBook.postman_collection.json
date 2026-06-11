@@ -1,0 +1,233 @@
+{
+  "info": {
+    "name": "TicketBook API",
+    "description": "Интеграционное тестирование системы TicketBook (M1 Auth → M2 Catalog → M3 Booking → M4 Payment)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",   "value": "http://localhost:5000" },
+    { "key": "token",      "value": "" },
+    { "key": "booking_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "M1 Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Тест Тестов\",\n  \"email\": \"newuser@test.com\",\n  \"password\": \"Test1234!\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));"
+          ]}}]
+        },
+        {
+          "name": "TC-INT-01 — Login (valid)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user@test.com\",\n  \"password\": \"Test1234!\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Has session_token', () => pm.expect(json.session_token).to.be.a('string'));",
+            "pm.collectionVariables.set('token', json.session_token);",
+            "console.log('Token saved:', json.session_token);"
+          ]}}]
+        },
+        {
+          "name": "Login (invalid credentials)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user@test.com\",\n  \"password\": \"wrongpass\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 401', () => pm.response.to.have.status(401));"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "M2 Catalog",
+      "item": [
+        {
+          "name": "Get all events",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/events"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+          ]}}]
+        },
+        {
+          "name": "Filter by category=concert",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/events?category=concert", "query": [{ "key": "category", "value": "concert" }] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('All category=concert', () => {",
+            "  pm.response.json().forEach(e => pm.expect(e.category).to.eq('concert'));",
+            "});"
+          ]}}]
+        },
+        {
+          "name": "TC-INT-03 — Get event 99999 (not found)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/events/99999"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 404', () => pm.response.to.have.status(404));",
+            "pm.test('Error: Event not found', () => pm.expect(pm.response.json().error).to.include('not found'));"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "M3 Booking",
+      "item": [
+        {
+          "name": "TC-INT-01 — Create booking (valid token)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/booking/create",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"event_id\": 5\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Has booking_id', () => pm.expect(json.booking_id).to.be.a('number'));",
+            "pm.test('Status is pending', () => pm.expect(json.status).to.eq('pending'));",
+            "pm.collectionVariables.set('booking_id', json.booking_id);",
+            "console.log('Booking ID saved:', json.booking_id);"
+          ]}}]
+        },
+        {
+          "name": "TC-INT-02 — Create booking (invalid token)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/booking/create",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer INVALID_TOKEN_12345" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"event_id\": 5\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 401', () => pm.response.to.have.status(401));"
+          ]}}]
+        },
+        {
+          "name": "TC-INT-03 — Create booking (event_id=99999)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/booking/create",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"event_id\": 99999\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 404', () => pm.response.to.have.status(404));",
+            "pm.test('Event not found', () => pm.expect(pm.response.json().error).to.include('not found'));"
+          ]}}]
+        },
+        {
+          "name": "Get my bookings",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/booking/my",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+          ]}}]
+        },
+        {
+          "name": "Get booking by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/booking/{{booking_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "M4 Payment",
+      "item": [
+        {
+          "name": "TC-INT-04 — Pay (success)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/payment/pay",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"booking_id\": {{booking_id}},\n  \"card_token\": \"tok_test_valid\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('payment_status = success', () => pm.expect(pm.response.json().payment_status).to.eq('success'));",
+            "pm.test('booking_status = paid', () => pm.expect(pm.response.json().booking_status).to.eq('paid'));"
+          ]}}]
+        },
+        {
+          "name": "TC-INT-05 — Pay again (already paid)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/payment/pay",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"booking_id\": {{booking_id}},\n  \"card_token\": \"tok_test_valid\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 409', () => pm.response.to.have.status(409));",
+            "pm.test('Already paid error', () => pm.expect(pm.response.json().error).to.include('already paid'));"
+          ]}}]
+        },
+        {
+          "name": "TC-INT-06 — Pay (card declined)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/payment/pay",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"booking_id\": {{booking_id}},\n  \"card_token\": \"tok_test_decline\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 402', () => pm.response.to.have.status(402));",
+            "pm.test('payment_status = declined', () => pm.expect(pm.response.json().payment_status).to.eq('declined'));",
+            "pm.test('booking_status = failed', () => pm.expect(pm.response.json().booking_status).to.eq('failed'));"
+          ]}}]
+        }
+      ]
+    }
+  ]
+}
